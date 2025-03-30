@@ -1,0 +1,395 @@
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ YJ短视频解析 ✨</title>
+    <link href="css.css" rel="stylesheet">
+    <style>
+        :root {
+            --main-pink: #FFA1C9;
+            --sky-blue: #87CEEB;
+            --mint-green: #98FB98;
+            --deep-purple: #9370DB;
+            --bg-blur: blur(12px);
+        }
+
+        body {
+            font-family: 'Kiwi Maru', serif;
+            background: linear-gradient(145deg, var(--sky-blue) 0%, var(--main-pink) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .anime-character {
+            position: fixed;
+            z-index: 0;
+            pointer-events: none;
+            max-width: 250px;
+            opacity: 0.9;
+        }
+        .character-left { bottom: -50px; left: -30px; transform: scaleX(-1); }
+        .character-right { bottom: -50px; right: -30px; }
+
+        .widgets-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .widget-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: var(--bg-blur);
+            padding: 12px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .main-container {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: var(--bg-blur);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            z-index: 1;
+        }
+
+        .input-box {
+            position: relative;
+            margin: 30px 0;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50px;
+            box-shadow: 0 5px 20px rgba(255, 161, 201, 0.3);
+        }
+
+        #urlInput {
+            width: 78%;
+            padding: 18px 130px 18px 25px;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: #6A5ACD;
+            outline: none;
+        }
+
+        #urlInput::placeholder {
+            color: #C8A2C8;
+        }
+
+        .parse-btn {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, var(--deep-purple), var(--main-pink));
+            color: white;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .media-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 25px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bouncing-loader {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .bouncing-loader div {
+            width: 12px;
+            height: 12px;
+            margin: 3px;
+            background: var(--deep-purple);
+            border-radius: 50%;
+            animation: bouncing 0.6s infinite alternate;
+        }
+
+        @keyframes bouncing {
+            to { transform: translateY(-15px); }
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 15px;
+                padding: 25px;
+            }
+            .widgets-container {
+                top: 10px;
+                right: 10px;
+                flex-direction: column;
+            }
+            .anime-character {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1 style="text-align: center; color: #6A5ACD; margin-bottom: 30px;">😎 YJ短视频解析 😎</h1>
+
+        <div class="input-box">
+            <input type="text" placeholder="在这里输入视频链接哦～ (ฅ^•ω•^ฅ)" id="urlInput">
+            <button class="parse-btn" onclick="parseContent()">
+                <i class="fas fa-wand-magic-sparkles"></i>
+                魔法解析！
+            </button>
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <div class="bouncing-loader">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+            <p style="text-align: center; color: #6A5ACD; margin-top: 10px;">正在释放魔法... ✨</p>
+        </div>
+
+        <div id="contentBox" style="opacity: 0; transition: opacity 0.3s ease;"></div>
+    </div>
+
+    <div class="debug-info" id="debugInfo"></div>
+
+    <script>
+        // 调试信息显示
+        let debugTimer;
+        function showDebugInfo(message) {
+            const debugEl = document.getElementById('debugInfo');
+            debugEl.textContent = message;
+            clearTimeout(debugTimer);
+            debugTimer = setTimeout(() => debugEl.textContent = '', 5000);
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        getWeather();
+
+        // URL提取
+        function extractURL(text) {
+            try {
+                const urlRegex = /(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*))/g;
+                const matches = text.match(urlRegex);
+                return matches ? matches[0] : null;
+            } catch (e) {
+                console.error('URL提取错误:', e);
+                return null;
+            }
+        }
+
+        // 解析内容
+        async function parseContent() {
+            showDebugInfo('开始解析流程...');
+            
+            try {
+                const input = document.getElementById('urlInput');
+                if (!input) throw new Error('找不到输入框元素');
+                
+                const url = extractURL(input.value);
+                showDebugInfo(`提取到URL: ${url || '无'}`);
+
+                if (!url) {
+                    showAlert('🚨 请输入有效的链接哦～ (´•̥ ̯ •̥`)');
+                    return;
+                }
+
+                toggleLoading(true);
+                
+                showDebugInfo(`正在请求API: ${url}`);
+                const apiUrl = `https://api.kxzjoker.cn/api/jiexi_video?url=${encodeURIComponent(url)}`;
+                const response = await fetch(apiUrl);
+                showDebugInfo(`收到响应状态: ${response.status}`);
+
+                if (!response.ok) {
+                    throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                showDebugInfo(`API响应数据: ${JSON.stringify(data).slice(0, 100)}...`);
+
+                if (!data || (data.success !== 200 && data.success !== true)) {
+                    throw new Error('API返回数据格式异常');
+                }
+
+                renderContent(data.data);
+                showDebugInfo('内容渲染完成');
+            } catch (error) {
+                console.error('解析流程错误:', error);
+                showDebugInfo(`错误: ${error.message}`);
+                showAlert(`❌ 发生错误: ${error.message}`);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        // 渲染内容
+        function renderContent(data) {
+            const contentBox = document.getElementById('contentBox');
+            if (!contentBox) {
+                throw new Error('找不到内容容器');
+            }
+
+            contentBox.innerHTML = '';
+            
+            try {
+                if (data.images) {
+                    const galleryHTML = data.images.map((img, index) => `
+                        <div class="gallery-item" onclick="showFullImage('${img}')">
+                            <img src="${img}" 
+                                 alt="图集 ${index + 1}"
+                                 loading="lazy"
+                                 style="border-radius: 10px; 
+                                        width: 100%; 
+                                        aspect-ratio: 1/1; 
+                                        object-fit: cover;
+                                        cursor: zoom-in;">
+                            <div class="image-index">${index + 1}</div>
+                        </div>
+                    `).join('');
+
+                    contentBox.innerHTML = `
+                        <div class="media-card">
+                            <h2 style="color: #9370DB; margin-bottom: 15px;">
+                                ${data.title || '未命名图集'}
+                            </h2>
+                            <div style="display: grid; 
+                                      gap: 10px; 
+                                      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                                ${galleryHTML}
+                            </div>
+                        </div>
+                    `;
+                } else if (data.video_url) {
+                    contentBox.innerHTML = `
+                        <div class="media-card">
+                            <h2 style="color: #9370DB; margin-bottom: 15px;">
+                                ${data.video_title || '未命名视频'}
+                            </h2>
+                            <div style="position: relative; padding-top: 56.25%;">
+                                <video controls 
+                                       style="position: absolute;
+                                              top: 0;
+                                              left: 0;
+                                              width: 100%;
+                                              height: 100%;
+                                              border-radius: 15px;">
+                                    <source src="${data.video_url}" type="video/mp4">
+                                    您的浏览器不支持视频播放
+                                </video>
+                            </div>
+                            <div style="margin-top: 15px; text-align: center;">
+                                <a href="${data.download_url}" 
+                                   style="display: inline-flex;
+                                          align-items: center;
+                                          padding: 12px 25px;
+                                          background: #FFA1C9;
+                                          color: white;
+                                          border-radius: 25px;
+                                          text-decoration: none;
+                                          gap: 8px;">
+                                    <i class="fas fa-download"></i>
+                                    保存视频 (${(data.video_size || 0).toFixed(1)}MB)
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }
+                contentBox.style.opacity = 1;
+            } catch (e) {
+                console.error('渲染错误:', e);
+                showAlert('内容渲染失败，请检查数据格式');
+            }
+        }
+
+        // 显示完整图片
+        function showFullImage(url) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+                cursor: zoom-out;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.maxWidth = '90%';
+            img.style.maxHeight = '90%';
+            img.style.borderRadius = '10px';
+            
+            overlay.onclick = () => overlay.remove();
+            overlay.appendChild(img);
+            document.body.appendChild(overlay);
+        }
+
+        // 工具函数
+        function toggleLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showAlert(message) {
+            const alert = document.createElement('div');
+            alert.style.position = 'fixed';
+            alert.style.bottom = '30px';
+            alert.style.left = '50%';
+            alert.style.transform = 'translateX(-50%)';
+            alert.style.background = 'rgba(255, 255, 255, 0.95)';
+            alert.style.padding = '15px 30px';
+            alert.style.borderRadius = '30px';
+            alert.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.2)';
+            alert.style.color = '#6A5ACD';
+            alert.innerHTML = message;
+            
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 3000);
+        }
+
+        // 确保按钮点击事件绑定
+        document.querySelector('.parse-btn').addEventListener('click', parseContent);
+        document.querySelector('.parse-btn').addEventListener('touchend', parseContent);
+    </script>
+</body>
+</html>
